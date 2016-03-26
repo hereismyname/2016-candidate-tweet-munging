@@ -1,0 +1,137 @@
+---
+title: "2016 Candidate Tweet Scraping: Democrats"
+author: "AM"
+output: html_document
+toc: true
+---
+
+# Overview
+
+Since the debate in (Wisconsin?) earlier in February, I've been reading articles whose authors argue that Hillary Clinton's campaign has been attempting to cast Clinton as well-rounded, and better equipped to address progressive issues in a broad scope compared to Sanders's more "narrow" focus on economic issues.
+
+<!-- Probably some debate transcript would be helpful at this point -->
+
+Following Iowa and New Hampshire, both democratic campaigns have become more likely to directly criticize the opposing candidate, which can be seen both through speeches & public appearences by candidates, as well as through activity generated through candidate social-media accounts.
+
+Casually scrolling through each candidate's profile allows one to gain a general sense of what topics and issues a candidate is emphasizing at a particular time, but I'm interested in comparing how each campaign uses social media to shape their message and contrast itself to its opponent.
+
+I've started with the democrats to answer some initial questions:
+  - Which topics do the candidates emphasize the most? The least?
+  - How do candidates within their respective parties differ?
+  - How is engagement reflected in user interaction, i.e through retweets/likes 
+    per post, and are surges reflected after normalizing for follower count?
+  - How often do individual candidates retweet posts from other users?
+
+To answer these questions, I'm using Twitter's REST API to scrape each candidate's timeline, pulling down both tweets and retweets. The `twitteR` package (available on CRAN) captures other important metadata, such as when each tweet was sent, and how many likes/retweets each message receives. Both the scraping and analysis will be done in R. I've organized the work in a markdown document, so interested users can follow along through each chunk of code. I'll write a bit of description for each section to explain what I'm doing, but feel free to skip to the results/analysis section if you're not interested.
+
+
+# Data Collection & Processing
+### API handshake
+
+Users interested in accessing Twitter's REST API need to acquire an API key/secret before they can being sending queries. An explanation is here. <!-- link --> `setup_twitter_oauth()` takes my 4 tokens and allows me to send queries directly from R.
+
+```{r initialize, message = FALSE, warning = FALSE}
+library(dplyr)
+library(twitteR)
+library(magrittr)
+library(ggplot2)
+library(lubridate)
+library(reshape2)
+library(readr)
+```
+
+```{r api-elements, echo = FALSE}
+# read source file containing my api logins
+source("api-credentials.R")
+```
+
+```{r oauth-login}
+setup_twitter_oauth(
+  api_key,
+  api_sec,
+  api_tok,
+  api_tok_sec
+)
+```
+
+### Update current data to include older tweets
+
+After the OAuth session is established, we can finish data collection.
+
+I created some initial data on each candidate that flows back until around fall for each candidate. I'd like to capture their activity over the summer of 2015, so we have a more complete archive as the campaigns continue. The data is stored under the `/data` directory in this repo.
+
+Each of my current sets has about 1200 tweets from each candidate. Due to how the API is configured, only a certain amount of tweets can be pulled down at a time. This markdown will update the data I already have to include all the tweets that occurred in March 2016. The code I used to scrape these files [is located here.](https://github.com/hereismyname/2016-candidate-tweet-munging/blob/master/code/orig_scrape.R)
+
+```{r existing}
+bs <- read_csv("../data/sanders-tweets-1015-0216.csv", col_types = cols(id = "c"))
+hc <- read_csv("../data/clinton-tweets-0715-0216.csv", col_types = cols(id = "c"))
+
+# most recent tweet is at the top
+# get most recent tweet ID from both dem candidates
+bs_recent <- bs$id[1]
+hc_recent <- hc$id[1]
+
+update_bs <- userTimeline("berniesanders", n = 500) %>% twListToDF()
+update_hc <- userTimeline("hillaryclinton", n = 500) %>% twListToDF()
+```
+
+At this moment, it looks like my query against Clinton's account returned everything up to 2/26. 
+```{r update-results-c}
+dim(update_hc)
+last(update_hc$created)
+```
+The democratic debate during that time was on the 23, so we should already have any activity that occurred around that time. Don't really feel like fussing for two days where not a lot was happening (granted it was a day before South Carolina voted, but we'll assume that more meaningful activity to mobilize voters was occurring on the day of the Primary).
+
+```{r update-results-s}
+dim(update_bs)
+last(update_bs$created)
+```
+Sanders on the other hand only goes through mid-march, and returns a smaller number of tweets. We'll try to retrieve a few more by paging through his account's timeline, using a helper function [that can be found here.](https://github.com/hereismyname/2016-candidate-tweet-munging/blob/master/code/tweets_since.R)
+
+```{r update-bs}
+# bring in helper function
+source("tweets_since.R")
+
+last_bs <- last(update_bs$id)
+scrape_bs <- tweets_since("berniesanders", id = last_bs, n = 300)
+
+# bind all the results together
+update_bs <- bind_rows(update_bs, scrape_bs)
+```
+
+Now that we have the additional tweets from each candidate, we'll process the date
+string that's attached to each tweet so that we can use it for plotting.
+
+```{r clean-updates}
+# store each frame in a list
+updates <- list(update_bs, update_hc)
+
+# add month & year columns for each frame
+updates <- lapply(updates, function(x) {
+  x %>%
+    mutate(
+      created = as.POSIXct(created),
+      yr      = year(created), 
+      mo      = month(created)
+    )
+})
+
+# update each frame
+bs <- bind_rows(bs, updates[[1]])
+hc <- bind_rows(hc, updates[[2]])
+```
+
+Now that we've gotten some more recent data, let's make sure there weren't any duplicates introduced during the scraping.
+
+```{r dedupe}
+# retain only the first copy of each tweet
+bs <- bs[!duplicated(bs$id),]
+hc <- hc[!duplicated(hc$id),]
+```
+
+Then save the files.
+
+```{r save-updated frames, echo = FALSE}
+write.csv(bs, paste0("../data/sanders-tweets-", Sys.Date(), ".csv"), row.names = FALSE)
+write.csv(hc, paste0("../data/clinton-tweets-", Sys.Date(), ".csv"), row.names = FALSE)
+```
