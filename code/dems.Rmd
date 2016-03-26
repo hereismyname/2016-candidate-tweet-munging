@@ -117,8 +117,8 @@ updates <- lapply(updates, function(x) {
 })
 
 # update each frame
-bs <- bind_rows(bs, updates[[1]])
-hc <- bind_rows(hc, updates[[2]])
+bs <- rbind(bs, updates[[1]])
+hc <- rbind(hc, updates[[2]])
 ```
 
 Now that we've gotten some more recent data, let's make sure there weren't any duplicates introduced during the scraping.
@@ -129,7 +129,7 @@ bs <- bs[!duplicated(bs$id),]
 hc <- hc[!duplicated(hc$id),]
 ```
 
-Then save the files.
+Then save the files. We'll then move onto the analysis in another file.
 
 ```{r save-updated frames, echo = FALSE}
 write.csv(bs, paste0("../data/sanders-tweets-", Sys.Date(), ".csv"), row.names = FALSE)
