@@ -7,7 +7,7 @@ output: html_document
 
 # Overview
 
-Recently I've been interested in how candidates go about shaping their campaign messages & focus via social media. I had a few questions about campaign habits regarding twitter, and haven't found all the answers from the news sources I follow. I wanted to look at follower engagement, activity & topics within each candidate's account, and figured this would be a good chance for me to stretch and work with a new type of data. I wouldn't consider this exhaustively representative, & mostly did it for my own interest, but figured it might be interesting for some.
+Recently I've been interested in how candidates go about shaping their campaign messages & focus via social media. I had a few questions about campaign habits regarding twitter, and haven't found all the answers from the news sources I follow. I wanted to look at follower engagement, activity & topics within each candidate's account, and figured this would be a good chance for me to stretch and work with a new type of data. I wouldn't consider this exhaustively representative, & mostly did it for my own interest, but figured it might be interesting for some. 
 
 # Import & cleaning
 
@@ -55,7 +55,11 @@ dat <- bind_rows(hc, bs) %>%
     # add a time of day variable
     time = strftime(created, "%H:%M:%S") %>% as.POSIXct(., format = "%H:%M:%S")
   )
+
+count(dat, user)
 ```
+
+Overall, we have an even sample between each candidate, spanning from Fall 2015 to March 2016.
 
 # Analysis
 

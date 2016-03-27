@@ -163,7 +163,16 @@ dat &lt;- bind_rows(hc, bs) %&gt;%
     
     # add a time of day variable
     time = strftime(created, &quot;%H:%M:%S&quot;) %&gt;% as.POSIXct(., format = &quot;%H:%M:%S&quot;)
-  )</code></pre>
+  )
+
+count(dat, user)</code></pre>
+<pre><code>## Source: local data frame [2 x 2]
+## 
+##      user     n
+##    (fctr) (int)
+## 1 Sanders  2117
+## 2 Clinton  2166</code></pre>
+<p>Overall, we have an even sample between each candidate, spanning from Fall 2015 to March 2016.</p>
 </div>
 <div id="analysis" class="section level1">
 <h1>Analysis</h1>
