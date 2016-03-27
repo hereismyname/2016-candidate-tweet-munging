@@ -300,6 +300,7 @@ mo_hashes <- c(
 activity <- dat %>% 
   group_by(user, date) %>% 
   mutate(num_tweets_day = n()) %>% 
+  slice(1) %>%
   group_by(user) %>% 
   mutate(mean_tweets = cummean(num_tweets_day)) %>%
   filter(!mo %in% c("July", "August")) %>%
