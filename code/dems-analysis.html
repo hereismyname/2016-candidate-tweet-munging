@@ -118,7 +118,7 @@ $(document).ready(function () {
 
 <div id="overview" class="section level1">
 <h1>Overview</h1>
-<p>Recently I’ve been interested in how candidates go about shaping reinforcing their campaign messages &amp; focus via social media. I had a few questions about campaign habits regarding twitter, and haven’t found all the answers from the news sources I follow. I wanted to look at follower engagement, activity &amp; topics within each candidate’s account, and figured this would be a good chance for me to stretch and work with a new type of data. I wouldn’t consider this exhaustively representative, &amp; mostly did it for my own interest, but figured it might be interesting for some.</p>
+<p>Recently I’ve been interested in how candidates go about shaping their campaign messages &amp; focus via social media. I had a few questions about campaign habits regarding twitter, and haven’t found all the answers from the news sources I follow. I wanted to look at follower engagement, activity &amp; topics within each candidate’s account, and figured this would be a good chance for me to stretch and work with a new type of data. I wouldn’t consider this exhaustively representative, &amp; mostly did it for my own interest, but figured it might be interesting for some.</p>
 </div>
 <div id="import-cleaning" class="section level1">
 <h1>Import &amp; cleaning</h1>
@@ -312,8 +312,14 @@ frames_count &lt;- dat %&gt;%
 <ul>
 <li>I haven’t included instances where a candidate retweets another user’s post</li>
 <li>I wasn’t able to get any tweets from Sanders prior to October (sadface, more detail below)</li>
-<li>It seems like Twitter’s API only provides chunks of a user’s timeline at a time, and I appear to have a far smaller number of tweets per candidate than what’s on their account. I think this is a limitation of the REST API, but I also haven’t dug deeply into the <code>TwitteR</code> package to see if I’m doing something wrong. The main issue I’ve experienced is that queries to a user’s timeline rarely return the expected number of tweets I specify– e.g. I’ll request 500, and get 300~ instead. I’ve attempted to work around this by paging through each user’s timeline through the use of unique tweet-IDs. This was a practice I’ve seen recommended from both R-Users and other practitioners through StackOverflow &amp; other resources, but it’s not as optimal as I’d like. In conclusion, I consider this is a flawed, (but interesting) sample from each candidate.</li>
-<li>Cohen’s <em>d</em> was maybe inappropriate for comparing each the number of tweets sent/day (both distributions have long tails), next time I’ll just show you some nice density plots. It’s the weekend, please don’t hate me for being lazy!</li>
+<li>It seems like Twitter’s API only provides chunks of a user’s timeline at a time, and I appear to have a far smaller number of tweets per candidate than what’s on their account. I think this is a limitation of the REST API, but I also haven’t dug deeply into the <code>TwitteR</code> package to see if I’m doing something wrong.
+<ul>
+<li>The main issue I’ve experienced is that queries to a user’s timeline rarely return the expected number of tweets I specify– e.g. I’ll request 500, and get 300~ instead.</li>
+<li>I’ve attempted to work around this by paging through each user’s timeline through the use of unique tweet-IDs. This was a practice I’ve seen recommended from both R-Users and other practitioners through StackOverflow &amp; other resources, but it’s not as optimal as I’d like.</li>
+<li>In conclusion, I consider this is a flawed, (but interesting) sample from each candidate.</li>
+</ul></li>
+<li>Cohen’s <em>d</em> was maybe inappropriate for comparing each the number of tweets sent/day (both distributions have really long tails), but it seemed fairly trivial. Next time I’ll just show you some nice density plots. It’s the weekend, please don’t hate me for being lazy!</li>
+<li>I borrowed some color hashes for plotting from <a href="http://colorbrewer2.org/">colorbrewer2.org</a>, one of my favorite resources.</li>
 </ul>
 </div>
 </div>
