@@ -1,0 +1,379 @@
+---
+title: "Dem Candidate Tweet Trends"
+author: "AM"
+date: "March 26, 2016"
+output: html_document
+---
+
+# Overview
+
+...
+
+# Data import & cleaning
+
+The major steps of data collection & handling are documented in [another markdown.]() At this point, we only need to read in the raw data and perform some minor processing. I have a preference 
+
+```{r initialize}
+library(dplyr)
+library(lubridate)
+library(magrittr)
+library(readr)
+library(stringr)
+
+hc <- read_csv("../data/clinton-tweets-2016-03-26.csv", col_types = cols(id = "c"))
+bs <- read_csv("../data/sanders-tweets-2016-03-26.csv", col_types = cols(id = "c"))
+
+# combine data & clean
+dat <- bind_rows(hc, bs) %>%
+  # sort by date
+  arrange(created) %>%
+  select(
+    # grab relevant variables & rename
+    user = screenName, 
+    id, created, yr, mo,
+    favorites = favoriteCount,
+    retweets = retweetCount, 
+    client = statusSource, 
+    text
+  ) %>%
+  mutate(
+    mo = factor(
+      # will want to redo this and want to add ordered = TRUE
+      # will need to do this carefully so that 2015 months occur prior to jan/feb
+      mo, levels = 1:12,
+      labels = month.name
+    ),
+    
+    # order the months to show fall in front
+    mo = factor(mo,
+                levels = c("July", "August", "September", "October", "November", "December", 
+                           "January", "February", "March"), ordered = TRUE),
+    
+    # rename users by last name
+    user = factor(user, 
+                  levels = c("BernieSanders", "HillaryClinton"),
+                  labels = c("Sanders", "Clinton")),
+    
+    # strip html tags out
+    client = gsub("<.*?>", "", client),
+    
+    # add a date variable
+    date = as.Date(created),
+    
+    # add a time of day variable
+    time = strftime(created, "%H:%M:%S") %>% as.POSIXct(., format = "%H:%M:%S")
+  )
+```
+
+# Analysis
+
+## Campaign issue discussion
+
+There are many topics that are of interest to the Democratic nomination campaigns-- giving each adequate breadth and depth is largely beyond the the scope of this base pass. However, in the absence of exhaustive scrutiny of each candidate's twitter feed, we'll take a look at each candidate's posts more broadly, attempting to get a general sense of what is important to each candidate at a given time. We'll do this largely through tracking keywords that are reliably associated with specific topics and issues. For example, the list of words/phrases "wage", "income", "compensat(ion)", "an hour", should generally be associated with tweets discussing the federal minimum wage. This isn't a foolproof strategy-- some keywords will at least partially map onto other topics (e.g. while "compensation" might be seen in tweets discussing the minimum wage, it could also appear in tweets discussing income disparities between men & women); however, this approach should be enough to group candidate tweets into broad categories.
+
+The list of terms/phrases that will be searched for within the Democratic race will necessarily be different from a list one might use for the Republican race. Again, this list is not meant to be exhaustive, but should capture many of the broad issues that have been raised in the race thus far. For this analysis, I'm looking at domestic policy by itself. Here are the issues we'll be searching for:
+
+*1. Race, & Gender*
+    - Clinton's candidacy is historic, in that her presence in the race 
+    represents a strong chance for the U.S. to elect its first female president.
+    Clinton presents herself as a champion of women's rights, and argues that her 
+    presidency would serve as a bastion against an increasingly mysogynistic 
+    republican-right. However, in Iowa, New Hampshire, and Nevada, current voting 
+    results show the break between Sanders and Clinton largely rests upon the age
+    of voters, rather than gender. Much has already been written about each 
+    candidate's appeal to female voters, and I'm interested in seeing how this is 
+    reflected in their social media activity.
+    - Minority voters present a similar question of appeal across candidates. Sanders
+    has been consistently dinged in national publications for his lack of familiarity
+    outside his home state. On the other hand, Clinton has enjoyed (for better and 
+    for worse) incredibly high visibility amongst the American public, and most media
+    outlets expect minority voters to generally favor Clinton in most contests. 
+    However, Sanders performed reasonably well amongst Latino voters in Nevada, and 
+    has received endorsements from several <!-- tie this up -->
+*2. Income & Wealth Inequality*
+    - While the U.S. economy has been experiencing marginal growth since <!-- when -->,
+    many Americans are coping with a recovery that has passed over them. Employment 
+    among adults in general has stabilized, but employment among young adults has 
+    not grown in proportion. College affordability has been a topic featured 
+    consistently in debates and in candidate rallies. Sanders's campaign has made 
+    tax policy a central pillar of its platform, aiming to increase taxes on the 
+    wealthy to fund several progams designed to reduce the historic gap between 
+    the average and wealthiest Americans. This issue is a contested area between
+    Clinton and Sanders, prompting a broader debate over pragmatism and feasibility
+    of progressive policy in a polarized U.S.. Sanders articulation of tax policy
+    this early in the race has arguably pressured Clinton to respond with greater
+    specificity regarding her economic policies. Additionally, Sanders's popularity
+    is largely credited to his populist appeal to middle-class voters. Clinton's
+    campaign has criticized Sanders for being narrowly focused on economic issues;
+    my initial assumption is that Sanders will tend to have a higher number of tweets
+    directly referencing economic issues, and that Clinton will possibly show more
+    diversity in topics, relative to Sanders.
+*3. Gun Control*
+    - At this point in time, the U.S. shows more people dying from suicide and
+    civilian gun-violence, than all the Americans lost in all the wars the U.S. has
+    been involved in until Vietnam. <!-- Cite! --> This is an area of weakness 
+    Clinton has pressured Sanders on in prior debates, and a solution that will 
+    be accepted by the country at-large has not been articulated by the democrats.
+*4. Health Care*
+    - This may be connected more generally with #2, but probably warrants its own 
+    category, given that it applies to a specific spending source that is different
+    from other costs of living. 
+
+The code below defines a function that will search each candidate's tweets for the presence of certain keywords related to each topic area. Certain terms are then added together to create a composite score for a topic.
+```{r topic-keywords}
+# all keywords ignore casing when applicable-- thus if a term starts a sentence
+# it will still be picked up
+# composite scores may double-count certain tweets-- i.e. some tweets might 
+# contain both "race" and "privilege" in the same 140 character string
+frames_count <- dat %>% 
+  group_by(user, mo) %>% # counts generated for each month/candidate 
+  summarise(
+    # total number of tweets each candidate has made per month
+    total = n(),
+    
+    # instances socialism is mentioned in a tweet
+    socialism = sum(grepl("socialism", text, ignore.case = TRUE)),
+    
+    # race
+    afri     = sum(grepl("afri", text, ignore.case = TRUE)),
+    race     = sum(grepl("race", text, ignore.case = TRUE)),
+    priv     = sum(grepl("privilege", text, ignore.case = TRUE)),
+    white    = sum(grepl("white", text, ignore.case = TRUE)),
+    black    = sum(grepl("black", text, ignore.case = TRUE)),
+    all_race = sum(afri, race, priv, white, black),
+    
+    # gender
+    gender  = sum(grepl("Gender", text, ignore.case = TRUE)),
+    women   = sum(grepl("Women", text, ignore.case = TRUE)),
+    woman   = sum(grepl("Woman", text, ignore.case = TRUE)),
+    moms    = sum(grepl("moms", text, ignore.case = TRUE)),
+    all_gen = sum(gender, women, woman, moms),
+    
+    # college
+    college = sum(grepl("college", text, ignore.case = TRUE)),
+    
+    # wages
+    wage      = sum(grepl("Wage", text, ignore.case = TRUE)),
+    an_hour   = sum(grepl("an hour", text)),
+    income    = sum(grepl("income", text, ignore.case = TRUE)),
+    compensat = sum(grepl("compensat", text, ignore.case = TRUE)),
+    all_wage  = sum(wage, an_hour, income, compensat),
+    
+    # health care
+    health = sum(grepl("health", text, ignore.case = TRUE)),
+    
+    # guns
+    guns           = sum(grepl("gun", text, ignore.case = TRUE)),
+    background_chk = sum(grepl("background check", text, ignore.case = TRUE)),
+    guns_all       = sum(guns, background_chk),
+    
+    # Flint
+    flint    = sum(grepl("Flint", text)),
+    
+    # prison
+    prisons  = sum(grepl("prison", text, ignore.case = TRUE)),
+    criminal = sum(grepl("criminal | criminal justice", text, ignore.case = TRUE)),
+    
+    # justice
+    justice = sum(grepl("justice", text, ignore.case = TRUE))
+  )
+```
+
+***Campaign Issue Discussion: Results***
+
+```{r plot-keywords, echo = FALSE}
+melt_frame <- melt(frames_count, id.vars = c("user", "mo"))
+
+# no tweets from Sanders are available in August/July
+melt_frame <- filter(melt_frame, !mo %in% c("August", "July"))
+
+melt_frame <- melt_frame %>% 
+  filter(variable %in% c("guns_all", "health", "all_wage", "college", "all_race",
+                         "all_gen", "prisons", "criminal", "justice")) %>%
+  mutate(
+    variable = factor(variable, 
+                      levels = c("guns_all", "health", "all_wage", 
+                                 "college", "all_race", "all_gen", 
+                                 "prisons", "criminal", "justice"),
+                      labels = c("Guns", "Health", "Wage", "College", "Race",
+                                 "Gender", "Prison(s)", "Criminal(s)", "Justice"))
+  )
+
+ggplot(melt_frame, aes(x = mo, y = value, fill = user)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ variable) +
+  theme_light() +
+  theme(
+    legend.position   = c(.95, .9),
+    legend.key        = element_rect(color = NA),
+    legend.background = element_rect(fill = "transparent"),
+    legend.title      = element_blank(),
+    axis.ticks        = element_blank(),
+    panel.border      = element_blank(),
+    panel.grid.minor  = element_blank()
+  ) +
+  labs(x = "", y = "Tweets Mentioning Topic")
+```
+
+Three things jump out at me from these plots:
+  - Clinton & Sanders are most different when it comes to their mentioning wages and gun control. Sanders consistently emphasizes the former, while Clinton emphasizes the latter.
+    - Sanders *really* prefers to avoid talking about guns/gun control.
+  - Clinton's renewed emphasis on race and intersectionality can be clearly seen in her account's tweeting habits during February.
+  - Compared to Sanders, Clinton's patterns in regards to most topics seem to be more variable month to month, showing more spikes, whereas Sanders tends to fluctuate less on average.
+  
+```{r plot-keywords-feb, echo = FALSE, eval = FALSE}
+frames_count <- dat %>% 
+  filter(mo == "February") %>%
+  mutate(date = as.Date(created)) %>%
+  group_by(user, date) %>% # counts generated for each month/candidate 
+  summarise(
+    # total number of tweets each candidate has made per month
+    total = n(),
+    
+    # instances socialism is mentioned in a tweet
+    socialism = sum(grepl("socialism", text, ignore.case = TRUE)),
+    
+    # race
+    afri     = sum(grepl("afri", text, ignore.case = TRUE)),
+    race     = sum(grepl("race", text, ignore.case = TRUE)),
+    priv     = sum(grepl("privilege", text, ignore.case = TRUE)),
+    white    = sum(grepl("white", text, ignore.case = TRUE)),
+    black    = sum(grepl("black", text, ignore.case = TRUE)),
+    all_race = sum(afri, race, priv, white, black),
+    
+    # gender
+    gender  = sum(grepl("Gender", text, ignore.case = TRUE)),
+    women   = sum(grepl("Women", text, ignore.case = TRUE)),
+    woman   = sum(grepl("Woman", text, ignore.case = TRUE)),
+    moms    = sum(grepl("moms", text, ignore.case = TRUE)),
+    all_gen = sum(gender, women, woman, moms),
+    
+    # college
+    college = sum(grepl("college", text, ignore.case = TRUE)),
+    
+    # wages
+    wage      = sum(grepl("Wage", text, ignore.case = TRUE)),
+    an_hour   = sum(grepl("an hour", text)),
+    income    = sum(grepl("income", text, ignore.case = TRUE)),
+    compensat = sum(grepl("compensat", text, ignore.case = TRUE)),
+    all_wage  = sum(wage, an_hour, income, compensat),
+    
+    # health care
+    health = sum(grepl("health", text, ignore.case = TRUE)),
+    
+    # guns
+    guns           = sum(grepl("gun", text, ignore.case = TRUE)),
+    background_chk = sum(grepl("background check", text, ignore.case = TRUE)),
+    guns_all       = sum(guns, background_chk),
+    
+    # Flint
+    flint    = sum(grepl("Flint", text)),
+    
+    # prison
+    prisons  = sum(grepl("prison", text, ignore.case = TRUE)),
+    criminal = sum(grepl("criminal | criminal justice", text, ignore.case = TRUE)),
+    
+    # justice
+    justice = sum(grepl("justice", text, ignore.case = TRUE))
+  )
+
+melt_frame <- melt(frames_count, id.vars = c("user", "date"))
+
+melt_frame <- melt_frame %>% 
+  filter(variable %in% c("guns_all", "health", "all_wage", "college", "all_race",
+                         "all_gen", "prisons", "criminal", "justice")) %>%
+  mutate(
+    variable = factor(variable, 
+                      levels = c("guns_all", "health", "all_wage", 
+                                 "college", "all_race", "all_gen", 
+                                 "prisons", "criminal", "justice"),
+                      labels = c("Guns", "Health", "Wage", "College", "Race",
+                                 "Gender", "Prison(s)", "Criminal(s)", "Justice")),
+    id = factor(user, 
+                levels = c("BernieSanders", "HillaryClinton"),
+                labels = c("Sanders", "Clinton"))
+  )
+
+ggplot(melt_frame, aes(x = date, y = value, fill = id)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_x_date() +
+  facet_wrap(~ variable) +
+  theme_light() +
+  theme(
+    legend.position   = c(.95, .9),
+    legend.key        = element_rect(color = NA),
+    legend.background = element_rect(fill = "transparent"),
+    legend.title      = element_blank(),
+    axis.ticks        = element_blank(),
+    panel.border      = element_blank(),
+    panel.grid.minor  = element_blank()
+  ) +
+  labs(x = "", y = "Tweets Mentioning Topic")
+```
+
+## Engagement
+
+```{r avg-engagement}
+mo_hashes <- c(
+  "#a6cee3",
+  "#1f78b4",
+  "#b2df8a",
+  "#33a02c",
+  "#fb9a99",
+  "#e31a1c",
+  "#fdbf6f"
+)
+
+# count(dat, user, date) %>% ggplot(aes(x = date, y = n, color = user)) + geom_line()
+
+dat %>% 
+  group_by(user, date) %>% 
+  mutate(num_tweets_day = n()) %>% 
+  group_by(user) %>% 
+  mutate(mean_tweets = cummean(num_tweets_day)) %>%
+  filter(!mo %in% c("July", "August")) %>%
+  ggplot(aes(x = date, y = mean_tweets, color = user)) + 
+  geom_line(size = 1.2) +
+  theme_light() +
+  # scale_color_manual(values = mo_hashes[4:5]) +
+  theme(
+    legend.position = c(.8, .7),
+    legend.key        = element_rect(color = NA),
+    legend.background = element_rect(fill = "transparent"),
+    legend.title      = element_blank(),
+    axis.ticks        = element_blank(),
+    panel.border      = element_blank(),
+    panel.grid.minor  = element_blank()
+  ) +
+  labs(x = "Date", y = "Running Average of Tweets/Day", title = "Activity")
+
+# slopegraphs for engagement
+dat %>% 
+  select(user, retweets, favorites, mo) %>% 
+  group_by(user, mo) %>%
+  summarise(rts = mean(retweets), favs = mean(favorites)) %>% 
+  filter(!mo %in% c("July", "August")) %>% 
+  melt(id.vars = c("mo", "user")) %>%
+  mutate(
+    variable = factor(variable, labels = c("Retweets", "Favorites")) 
+  ) %>%
+  ggplot(aes(x = user, y = value, color = mo, group = mo)) + 
+  geom_line(size = 1.2) + 
+  facet_wrap(~ variable) + 
+  scale_color_manual(values = mo_hashes) + 
+  theme_light() +
+  scale_y_continuous(labels = comma) +
+  theme(
+    legend.position = "bottom", 
+    legend.title = element_blank(),     
+    legend.key        = element_rect(color = NA),
+    legend.background = element_rect(fill = "transparent"),
+    legend.title      = element_blank(),
+    axis.ticks        = element_blank(),
+    panel.border      = element_blank(),
+    panel.grid.minor  = element_blank()
+  ) + 
+  labs(x = "", y = "Average", title = "Engagement")
+
+```
+
