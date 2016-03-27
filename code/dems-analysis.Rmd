@@ -141,7 +141,7 @@ frames_count <- dat %>%
   )
 ```
 
-#### Campaign Issue Discussion
+#### Campaign issue discussion
 
 Three things jump out at me from these plots:
 
@@ -281,7 +281,7 @@ ggplot(melt_frame, aes(x = date, y = value, fill = id)) +
   labs(x = "", y = "Tweets Mentioning Topic")
 ```
 
-## Daily Activity & Engagement
+## Daily activity & engagement
 
 ```{r avg-engagement, echo = FALSE}
 mo_hashes <- c(
@@ -398,6 +398,6 @@ dat %>% group_by(user) %>% summarise(links = sum(grepl("http://", text)))
 - It seems like Twitter's API only provides chunks of a user's timeline at a time, and I appear to have a far smaller number of tweets per candidate than what's on their account. I think this is a limitation of the REST API, but I also haven't dug deeply into the `TwitteR` package to see if I'm doing something wrong. 
     - The main issue I've experienced is that queries to a user's timeline rarely return the expected number of tweets I specify-- e.g. I'll request 500, and get 300~ instead. 
     - I've attempted to work around this by paging through each user's timeline through the use of unique tweet-IDs. This was a practice I've seen recommended from both R-Users and other practitioners through StackOverflow & other resources, but it's not as optimal as I'd like. 
-    - In conclusion, I consider this is a flawed, (but interesting) sample from each candidate.
+    - In conclusion, I consider this as a flawed, (but interesting) sample from each candidate.
 - Cohen's *d* was maybe inappropriate for comparing each the number of tweets sent/day (both distributions have really long tails), but it seemed fairly trivial. Next time I'll just show you some nice density plots. It's the weekend, please don't hate me for being lazy!
 - I borrowed some color hashes for plotting from [colorbrewer2.org](http://colorbrewer2.org/), one of my favorite resources. 
