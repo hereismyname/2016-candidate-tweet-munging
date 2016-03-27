@@ -74,7 +74,7 @@ There are many topics that are of interest to the Democratic nomination campaign
 
 **2. Income & Wealth Inequality**
 
-- College affordability has been a topic featured consistently in debates and in candidate rallies. Sanders's campaign has made tax policy a central pillar of its platform, aiming to increase taxes on wealthier & market speculation Americans to fund progams designed to reduce income disparity. Clinton's campaign has criticized Sanders for being narrowly focused on economic issues; my daring assumption is that Sanders will have a higher number of tweets directly referencing economic issues, and that Clinton will show more diversity in topics, relative to Sanders.
+- College affordability has been a topic featured consistently in debates and in candidate rallies. Sanders's campaign has made tax policy a central pillar of its platform, aiming to increase taxes on wealthier Americans & market speculation to fund progams designed to reduce income disparity. Clinton's campaign has criticized Sanders for being narrowly focused on economic issues; my daring assumption is that Sanders will have a higher number of tweets directly referencing economic issues, and that Clinton will show more diversity in topics, relative to Sanders.
 
 **3. Gun Control**
 
@@ -405,3 +405,14 @@ dat %>% group_by(user) %>% summarise(links = sum(grepl("http://", text)))
     - In conclusion, I consider this as a flawed, (but interesting) sample from each candidate.
 - Cohen's *d* was maybe inappropriate for comparing each the number of tweets sent/day (both distributions have really long tails), but it seemed fairly trivial. Next time I'll just show you some nice density plots. It's the weekend, please don't hate me for being lazy!
 - I borrowed some color hashes for plotting from [colorbrewer2.org](http://colorbrewer2.org/), one of my favorite resources. 
+
+```{r info}
+R.version$version.string
+
+packageVersion("dplyr")
+packageVersion("reshape2")
+packageVersion("ggplot2")
+packageVersion("readr")
+packageVersion("scales")
+packageVersion("magrittr")
+```
